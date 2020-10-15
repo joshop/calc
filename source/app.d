@@ -20,16 +20,16 @@ Function < ~(identifier) '(' Add ')'
 Literal <- ~([0-9]+ ('.' [0-9]+)*)
 Variable <- ~(identifier)
 `));
-struct United {
-	Complex!double dless;
+struct United { // i.e. with units... units to come later
+	Complex!double dless; // the dimensionless part
 	alias dless this;
 }
-United[string] variables;
-United[string] constants;
-United function(United)[string] functs;
-bool dbEnabled = false;
-United evaluate(ParseTree expr) {
-	if (!expr.successful) {
+United[string] variables; // user-defined
+United[string] constants; // not user-defined
+United function(United)[string] functs; // non-unary functions to come later also
+bool dbEnabled = false; // whether debug mode enabled
+United evaluate(ParseTree expr) { // recursively parse the tree
+	if (!expr.successful) { // i.e. parsing error from pegged
 		throw new Exception("Syntax error.");
 	}
 	switch(expr.name) {
@@ -114,9 +114,9 @@ void main() {
 	functs["log"] = function United(United x) { return United(Complex!double(log(x.re), x.im));};
 	functs["log2"] = function United(United x) { return United(Complex!double(log2(x.re), x.im));};
 	functs["log10"] = function United(United x) { return United(Complex!double(log10(x.re), x.im));};
-	functs["_debug"] = function United(United x) { dbEnabled = x != 0; return x; };
+	functs["_debug"] = function United(United x) { dbEnabled = x != 0; return x; }; // enable/disable debug function
 	constants["pi"] = United(Complex!double(PI));
-	constants["i"] = United(sqrt(Complex!double(-1)));
+	constants["i"] = United(sqrt(Complex!double(-1))); // maybe add support for j?
 	writeln("Executing program now");
 	auto terminal = Terminal(ConsoleOutputType.linear);
 	while (true) {
@@ -135,9 +135,9 @@ void main() {
 			} else {
 				terminal.writefln("=> %.14g", result);
 			}
-		} catch (UserInterruptionException) {
+		} catch (UserInterruptionException) { // ctrl-c from Terminal
 			break;
-		} catch (Exception err) {
+		} catch (Exception err) { // TODO: make my own type of exception
 			terminal.writeln("Error: " ~ err.msg);
 		}
 	}
