@@ -1,8 +1,8 @@
 import std.stdio: writeln, readln, write, writefln;
 import std.algorithm.iteration: sum, fold, map;
 import std.conv: to;
-import std.complex: Complex, sin, cos, abs, sqrt;
-import std.math: tan, asin, acos, atan, log, log2, log10, PI, approxEqual, quantize;
+import std.complex: Complex, sin, cos, tan, abs, sqrt, exp, log, log10;
+import std.math: asin, acos, atan, log2,  PI, E, approxEqual, quantize;
 import pegged.grammar;
 import arsd.terminal;
 mixin(grammar(`
@@ -105,19 +105,20 @@ United evaluate(ParseTree expr) { // recursively parse the tree
 void main() {
 	functs["sin"] = function United(United x) { return United(sin(x));};
 	functs["cos"] = function United(United x) { return United(cos(x));};
-	functs["tan"] = function United(United x) { return United(Complex!double(tan(x.re), x.im));};
+	functs["tan"] = function United(United x) { return United(tan(x));};
 	functs["asin"] = function United(United x) { return United(Complex!double(asin(x.re), x.im));};
 	functs["acos"] = function United(United x) { return United(Complex!double(acos(x.re), x.im));};
 	functs["atan"] = function United(United x) { return United(Complex!double(atan(x.re), x.im));};
 	functs["abs"] = function United(United x) { return United(Complex!double(abs(x)));};
 	functs["sqrt"] = function United(United x) { return United(sqrt(x));};
-	functs["log"] = function United(United x) { return United(Complex!double(log(x.re), x.im));};
+	functs["log"] = function United(United x) { return United(log(x));};
 	functs["log2"] = function United(United x) { return United(Complex!double(log2(x.re), x.im));};
-	functs["log10"] = function United(United x) { return United(Complex!double(log10(x.re), x.im));};
+	functs["log10"] = function United(United x) { return United(log10(x));};
 	functs["_debug"] = function United(United x) { dbEnabled = x != 0; return x; }; // enable/disable debug function
+	functs["exp"] = function United(United x) { return United(exp(x));};
 	constants["pi"] = United(Complex!double(PI));
 	constants["i"] = United(sqrt(Complex!double(-1))); // maybe add support for j?
-	writeln("Executing program now");
+	constants["e"] = United(Complex!double(E));
 	auto terminal = Terminal(ConsoleOutputType.linear);
 	while (true) {
 		try {
