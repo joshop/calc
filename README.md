@@ -10,3 +10,7 @@ Currently support for:
 * builtin constant pi
 * variables can be defined and used
 * terminal input can be navigated with arrow keys
+Goals:
+* non-unary functions
+* dimensional analysis/quantities with units, proper manipulation of units
+* user defined functions
