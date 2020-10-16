@@ -29,7 +29,7 @@ United[string] constants; // not user-defined
 United function(United)[string] functs; // non-unary functions to come later also
 bool dbEnabled = false; // whether debug mode enabled
 United evaluate(ParseTree expr) { // recursively parse the tree
-	if (!expr.successful) { // i.e. parsing error from pegged
+	if (!expr.successful || expr.end != expr.input.length) { // i.e. parsing error from pegged or not fully parsed
 		throw new Exception("Syntax error.");
 	}
 	switch(expr.name) {
