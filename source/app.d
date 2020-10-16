@@ -3,6 +3,7 @@ import std.algorithm.iteration: sum, fold, map;
 import std.conv: to;
 import std.complex: Complex, sin, cos, tan, abs, sqrt, exp, log, log10;
 import std.math: asin, acos, atan, log2,  PI, E, approxEqual, quantize;
+import std.format: format;
 import pegged.grammar;
 import arsd.terminal;
 mixin(grammar(`
@@ -28,16 +29,15 @@ United[string] variables; // user-defined
 United[string] constants; // not user-defined
 United function(United)[string] functs; // non-unary functions to come later also
 bool dbEnabled = false; // whether debug mode enabled
+string dbInfo = ""; // debug error info string
 United evaluate(ParseTree expr) { // recursively parse the tree
-	if (!expr.successful || expr.end != expr.input.length) { // i.e. parsing error from pegged or not fully parsed
-		throw new Exception("Syntax error.");
-	}
 	switch(expr.name) {
 		case "Expression":
 			return evaluate(expr.children[0]);
 		case "Expression.Start":
 			if (expr.children.length == 2) {
 				if (expr.children[0].matches[0] in constants) {
+					dbInfo = format!("%s constant value: %g")(expr.children[0].matches[0], constants[expr.children[0].matches[0]]);
 					throw new Exception(expr.children[0].matches[0] ~ " is a constant.");
 				}
 				United result = evaluate(expr.children[1]);
@@ -84,6 +84,7 @@ United evaluate(ParseTree expr) { // recursively parse the tree
 			} else if (expr.matches[0] in constants) {
 				return constants[expr.matches[0]];
 			} else {
+				dbInfo = format!("Variables declared: %s")(variables);
 				throw new Exception("Variable " ~ expr.matches[0] ~ " not declared.");
 			}
 		case "Expression.Literal":
@@ -96,6 +97,7 @@ United evaluate(ParseTree expr) { // recursively parse the tree
 			} else if (expr.matches[0] in constants) {
 				return United(constants[expr.matches[0]]*evaluate(expr.children[0]));
 			} else {
+				dbInfo = format!("Functions defined: %s")(functs);
 				throw new Exception("Function " ~ expr.matches[0] ~ " not found.");
 			}
 		default:
@@ -123,8 +125,17 @@ void main() {
 	while (true) {
 		try {
 			terminal.write("> ");
-			auto tree = Expression(terminal.getline());
+			auto inp = terminal.getline();
+			if (inp == "ENABLE DEBUG") {
+				dbEnabled = true;
+				continue;
+			}
+			auto tree = Expression(inp);
 			if (dbEnabled) terminal.writeln(tree);
+			if (!tree.successful || tree.end != tree.input.length) { // i.e. parsing error from pegged or not fully parsed
+				dbInfo = format!("Expression: %s; parse ended at %d < %d")(tree.input, tree.end, tree.input.length);
+				throw new Exception("Syntax error.");
+			}
 			auto result = evaluate(tree);
 			if (dbEnabled) {
 				terminal.writefln("=> Exact result: %g", result);
@@ -139,6 +150,9 @@ void main() {
 		} catch (UserInterruptionException) { // ctrl-c from Terminal
 			break;
 		} catch (Exception err) { // TODO: make my own type of exception
+			if (dbEnabled) {
+				terminal.writeln("DEBUG INFO for error: " ~ dbInfo);
+			}
 			terminal.writeln("Error: " ~ err.msg);
 		}
 	}
