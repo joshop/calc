@@ -22,7 +22,7 @@ Function < ~(identifier) '(' Add ')'
 Literal <- ~([0-9]+ ('.' [0-9]+)*)
 Variable <- ~(identifier)
 `));
-struct United { // i.e. with units... units being added now!!
+struct United { // i.e. with units...
 	Complex!double dless; // the dimensionless part
 	alias dless this; // hopefully won't get used much?
 	double[string] dimension; // the dimension: key is the si unit symbol, value is the exponent of it (undefined is zero)
@@ -42,13 +42,13 @@ struct United { // i.e. with units... units being added now!!
 				if (exponent != 1) {
 					num ~= "^" ~ to!string(exponent);
 				}
-				num ~= " ";
+				num ~= "*";
 			} else if (exponent < 0) {
 				denom ~= unit;
 				if (exponent != -1) {
 					denom ~= "^" ~ to!string(-exponent);
 				}
-				denom ~= " ";
+				denom ~= "*";
 			}
 		}
 		if (denom == "" && num == "") { // i.e. null dimension
@@ -56,10 +56,33 @@ struct United { // i.e. with units... units being added now!!
 		} else if (denom == "") {
 			return num[0..$-1];
 		} else if (num == "") {
-			return "1 / " ~ denom[0..$-1];
+			return "(" ~ denom[0..$-1] ~ ")^-1";
 		} else {
 			return num[0..$-1] ~ " / " ~ denom[0..$-1];
 		}
+	}
+	string siPrefix() { // get the SI prefix, *or empty if it's dimensionless*
+		if (dimension.length == 0) return ""; // otherwise 100*10 = 1k not 1000
+		auto bestPrefix = "";
+		auto bestValue = dless;
+		auto bestExp = abs(log10(dless));
+		foreach(string pref, int exponent; siPrefixes) {
+			auto val = dless*United(Complex!double(10.0^^-exponent));
+			if (abs(log10(val)) < bestExp) {
+				bestPrefix = pref;
+				bestValue = val;
+				bestExp = abs(log10(val));
+			}
+		}
+		return bestPrefix;
+	}
+	Complex!double siValue() { // the value for the prefix to be applied to
+		auto usingPrefix = siPrefix();
+		if (usingPrefix == "") return dless;
+		foreach(string pref, int exponent; siPrefixes) {
+			if (usingPrefix == pref) return dless*United(Complex!double(10.0^^-exponent));
+		}
+		assert(0, "something went really wrong with siPrefix()");
 	}
 	United opBinary(string op)(United other) if (op == "+" || op == "-") { // case 1: unlike units error here
 		if (dimension != other.dimension) {
@@ -84,11 +107,13 @@ struct United { // i.e. with units... units being added now!!
 	}
 	United opBinary(string op)(United other) if (op == "^^") { // case 3: error if exponent is not dimensionless
 		if (other.dimension.length) { // is not dimensionless
+			dbInfo = format!("Dimension: %s")(other.dimension);
 			throw new Exception("Unable to raise to the power of non-dimensionless unit " ~ other.hrDimension() ~ ".");
 		}
 		auto finalDim = dimension.dup; 
 		foreach(string unit, double exponent; finalDim) {
 			if (other.dless.im) { // this should error for now?
+				dbInfo = format!("Power: %g")(other.dless);
 				throw new Exception("Unable to raise non-dimensionless quantity with units " ~ hrDimension() ~ " to a complex power.");
 			}
 			finalDim[unit] *= other.dless.re;
@@ -104,6 +129,7 @@ United[string] constants; // not user-defined
 United function(United)[string] functs; // non-unary functions to come later also
 bool dbEnabled = false; // whether debug mode enabled
 string dbInfo = ""; // debug error info string
+int[string] siPrefixes;
 United evaluate(ParseTree expr) { // recursively parse the tree
 	switch(expr.name) {
 		case "Expression":
@@ -158,6 +184,13 @@ United evaluate(ParseTree expr) { // recursively parse the tree
 			} else if (expr.matches[0] in constants) {
 				return constants[expr.matches[0]];
 			} else {
+				foreach (string pref, int exponent; siPrefixes) { // scan si prefixes for matches
+					foreach (string name, United value; constants) {
+						if (pref ~ name == expr.matches[0]) {
+							return value * United(Complex!double(10.0^^exponent));
+						}
+					}
+				}
 				dbInfo = format!("Variables declared: %s")(variables);
 				throw new Exception("Variable " ~ expr.matches[0] ~ " not declared.");
 			}
@@ -179,6 +212,22 @@ United evaluate(ParseTree expr) { // recursively parse the tree
 	}
 }
 void main() {
+	siPrefixes["k"] = 3; // afaik d doesn't have aa initializers?
+	siPrefixes["M"] = 6;
+	siPrefixes["G"] = 9;
+	siPrefixes["T"] = 12;
+	siPrefixes["P"] = 15;
+	siPrefixes["E"] = 18;
+	siPrefixes["Z"] = 21;
+	siPrefixes["Y"] = 24;
+	siPrefixes["m"] = -3;
+	siPrefixes["μ"] = -6;
+	siPrefixes["n"] = -9;
+	siPrefixes["p"] = -12;
+	siPrefixes["f"] = -15;
+	siPrefixes["a"] = -18;
+	siPrefixes["z"] = -21;
+	siPrefixes["y"] = -24;
 	functs["sin"] = function United(United x) { return United(sin(x));};
 	functs["cos"] = function United(United x) { return United(cos(x));};
 	functs["tan"] = function United(United x) { return United(tan(x));};
@@ -219,11 +268,11 @@ void main() {
 				terminal.writefln("=> Human-readable units: %s", result.hrDimension());
 			}
 			if (approxEqual(result.re, 0) && !approxEqual(result.im, 0)) {
-				terminal.writefln("=> %.14gi %s", quantize!(10, -14)(result.im), result.hrDimension());
+				terminal.writefln("=> %.14gi %s%s", quantize!(10, -14)(result.siValue().im), result.siPrefix(), result.hrDimension());
 			} else if (approxEqual(result.im, 0)) {
-				terminal.writefln("=> %.14g %s", quantize!(10, -14)(result.re), result.hrDimension());
+				terminal.writefln("=> %.14g %s%s", quantize!(10, -14)(result.siValue().re), result.siPrefix(), result.hrDimension());
 			} else {
-				terminal.writefln("=> %.14g %s", result, result.hrDimension());
+				terminal.writefln("=> %.14g %s%s", result.siValue(), result.siPrefix(), result.hrDimension());
 			}
 		} catch (UserInterruptionException) { // ctrl-c from Terminal
 			break;
