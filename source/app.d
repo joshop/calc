@@ -282,6 +282,8 @@ void main() {
 			} else {
 				terminal.writefln("=> %.*g %s%s", numDecimals, result.siValue(), result.siPrefix(), result.hrDimension());
 			}
+			constants["ans"] = result;
+			constants["_"] = result;
 		} catch (UserInterruptionException) { // ctrl-c from Terminal
 			break;
 		} catch (Exception err) { // TODO: make my own type of exception
