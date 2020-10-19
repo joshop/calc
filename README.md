@@ -12,6 +12,7 @@ Currently support for:
 * terminal input can be navigated with arrow keys
 * quantities with units, dimensional analysis
 * SI prefixes
+
 Goals:
 * non-unary functions
 * user defined functions
