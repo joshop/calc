@@ -224,7 +224,7 @@ void main() {
 	siPrefixes["Z"] = 21;
 	siPrefixes["Y"] = 24;
 	siPrefixes["m"] = -3;
-	siPrefixes["μ"] = -6;
+	siPrefixes["u"] = -6;
 	siPrefixes["n"] = -9;
 	siPrefixes["p"] = -12;
 	siPrefixes["f"] = -15;
@@ -250,6 +250,8 @@ void main() {
 	constants["m"] = United(Complex!double(1), ["m": 1]);
 	constants["s"] = United(Complex!double(1), ["s": 1]);
 	constants["g"] = United(Complex!double(1), ["g": 1]);
+	constants["ohm"] = United(Complex!double(1), ["ohm": 1]);
+	constants["henry"] = United(Complex!double(1), ["henry": 1]);
 	auto terminal = Terminal(ConsoleOutputType.linear);
 	while (true) {
 		try {
