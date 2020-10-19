@@ -10,9 +10,9 @@ Currently support for:
 * builtin constant pi
 * variables can be defined and used
 * terminal input can be navigated with arrow keys
-
+* quantities with units, dimensional analysis
+* SI prefixes
 Goals:
 * non-unary functions
-* dimensional analysis/quantities with units, proper manipulation of units
 * user defined functions
 * better ui - color/syntax highlighting, tab completion, better error reporting?
