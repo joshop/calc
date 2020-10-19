@@ -124,6 +124,9 @@ struct United { // i.e. with units...
 	United opUnary(string op)() if (op == "-") {
 		return United(-dless, dimension);
 	}
+	United usqrt() {
+		return this ^^ United(Complex!double(0.5));
+	}
 }
 United[string] variables; // user-defined
 United[string] constants; // not user-defined
@@ -132,7 +135,7 @@ bool dbEnabled = false; // whether debug mode enabled
 string dbInfo = ""; // debug error info string
 int[string] siPrefixes;
 int numDecimals = 5;
-bool noDimlessPrefs = true; // no dimensionless prefixes: 1000 -> 1000 not 1k
+bool noDimlessPrefs = true; // no dimensionless prefixes: 1000 -> 1000 not 1k, not implemented yet
 United evaluate(ParseTree expr) { // recursively parse the tree
 	switch(expr.name) {
 		case "Expression":
@@ -237,8 +240,8 @@ void main() {
 	functs["asin"] = function United(United x) { return United(Complex!double(asin(x.re), x.im));};
 	functs["acos"] = function United(United x) { return United(Complex!double(acos(x.re), x.im));};
 	functs["atan"] = function United(United x) { return United(Complex!double(atan(x.re), x.im));};
-	functs["abs"] = function United(United x) { return United(Complex!double(abs(x)));};
-	functs["sqrt"] = function United(United x) { return United(sqrt(x));};
+	functs["abs"] = function United(United x) { return United(Complex!double(abs(x)), x.dimension);};
+	functs["sqrt"] = function United(United x) { return usqrt(x);};
 	functs["log"] = function United(United x) { return United(log(x));};
 	functs["log2"] = function United(United x) { return United(Complex!double(log2(x.re), x.im));};
 	functs["log10"] = function United(United x) { return United(log10(x));};
@@ -252,6 +255,7 @@ void main() {
 	constants["g"] = United(Complex!double(1), ["g": 1]);
 	constants["ohm"] = United(Complex!double(1), ["ohm": 1]);
 	constants["henry"] = United(Complex!double(1), ["henry": 1]);
+	constants["grav"] = United(Complex!double(-9.80655), ["m": 1, "s": -2])
 	auto terminal = Terminal(ConsoleOutputType.linear);
 	while (true) {
 		try {
