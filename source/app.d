@@ -1,10 +1,11 @@
 import std.stdio: writeln, readln, write, writefln;
 import std.array: assocArray;
 import std.algorithm.iteration: sum, fold, map;
+import std.algorithm.searching: startsWith, endsWith;
 import std.conv: to;
 import std.complex: Complex, sin, cos, tan, abs, sqrt, exp, log, log10;
 import std.math: asin, acos, atan, log2,  PI, E, approxEqual, quantize;
-import std.format: format;
+import std.format: format, formattedRead;
 import pegged.grammar;
 import arsd.terminal;
 mixin(grammar(`
@@ -130,6 +131,8 @@ United function(United)[string] functs; // non-unary functions to come later als
 bool dbEnabled = false; // whether debug mode enabled
 string dbInfo = ""; // debug error info string
 int[string] siPrefixes;
+int numDecimals = 5;
+bool noDimlessPrefs = true; // no dimensionless prefixes: 1000 -> 1000 not 1k
 United evaluate(ParseTree expr) { // recursively parse the tree
 	switch(expr.name) {
 		case "Expression":
@@ -256,6 +259,11 @@ void main() {
 				dbEnabled = true;
 				continue;
 			}
+			if (inp.startsWith("config: ") && inp.endsWith("decimals")) {
+				inp.formattedRead!"config: %d decimals"(numDecimals);
+				numDecimals++;
+				continue;
+			}
 			auto tree = Expression(inp);
 			if (dbEnabled) terminal.writeln(tree);
 			if (!tree.successful || tree.end != tree.input.length) { // i.e. parsing error from pegged or not fully parsed
@@ -268,11 +276,11 @@ void main() {
 				terminal.writefln("=> Human-readable units: %s", result.hrDimension());
 			}
 			if (approxEqual(result.re, 0) && !approxEqual(result.im, 0)) {
-				terminal.writefln("=> %.14gi %s%s", quantize!(10, -14)(result.siValue().im), result.siPrefix(), result.hrDimension());
+				terminal.writefln("=> %.*gi %s%s", numDecimals, result.siValue().im.quantize!(10)(-numDecimals), result.siPrefix(), result.hrDimension());
 			} else if (approxEqual(result.im, 0)) {
-				terminal.writefln("=> %.14g %s%s", quantize!(10, -14)(result.siValue().re), result.siPrefix(), result.hrDimension());
+				terminal.writefln("=> %.*g %s%s", numDecimals, result.siValue().re.quantize!(10)(-numDecimals), result.siPrefix(), result.hrDimension());
 			} else {
-				terminal.writefln("=> %.14g %s%s", result.siValue(), result.siPrefix(), result.hrDimension());
+				terminal.writefln("=> %.*g %s%s", numDecimals, result.siValue(), result.siPrefix(), result.hrDimension());
 			}
 		} catch (UserInterruptionException) { // ctrl-c from Terminal
 			break;
