@@ -286,6 +286,9 @@ void main() {
 	constants["ohm"] = United(Complex!double(1), ["ohm": 1]);
 	constants["henry"] = United(Complex!double(1), ["henry": 1]);
 	constants["grav"] = United(Complex!double(-9.80655), ["m": 1, "s": -2]);
+	foreach(string unit, double[string] definition; altUnits) { // create constants out of every derived SI unit
+		constants[unit] = United(Complex!double(altCoeffs[unit]), definition);
+	}
 	auto terminal = Terminal(ConsoleOutputType.linear);
 	while (true) {
 		try {
