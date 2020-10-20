@@ -81,7 +81,7 @@ struct United { // i.e. with units...
 		auto trueDless = dispDless();
 		foreach(string pref, int exponent; siPrefixes) {
 			auto val = dispDless()*United(Complex!double(10.0^^-exponent));
-			if (abs(log10(val)) < bestExp) {
+			if (log10(val).re < bestExp && log10(val).re >= 0) {
 				bestPrefix = pref;
 				bestValue = val;
 				bestExp = abs(log10(val));
@@ -280,6 +280,10 @@ void main() {
 	altUnits["N"]["m"] = 1;
 	altUnits["N"]["s"] = -2;
 	altCoeffs["N"] = 1000; // after all, a newton is a *kilo*gram meter per second squared
+	altUnits["J"]["g"] = 1;
+	altUnits["J"]["m"] = 2;
+	altUnits["J"]["s"] = -2;
+	altCoeffs["J"] = 1000;
 	functs["sin"] = function United(United x) { return United(sin(x));};
 	functs["cos"] = function United(United x) { return United(cos(x));};
 	functs["tan"] = function United(United x) { return United(tan(x));};
