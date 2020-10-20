@@ -259,30 +259,10 @@ United evaluate(ParseTree expr) { // recursively parse the tree
 	}
 }
 void main() {
-	siPrefixes["k"] = 3; // afaik d doesn't have aa initializers?
-	siPrefixes["M"] = 6;
-	siPrefixes["G"] = 9;
-	siPrefixes["T"] = 12;
-	siPrefixes["P"] = 15;
-	siPrefixes["E"] = 18;
-	siPrefixes["Z"] = 21;
-	siPrefixes["Y"] = 24;
-	siPrefixes["m"] = -3;
-	siPrefixes["u"] = -6;
-	siPrefixes["n"] = -9;
-	siPrefixes["p"] = -12;
-	siPrefixes["f"] = -15;
-	siPrefixes["a"] = -18;
-	siPrefixes["z"] = -21;
-	siPrefixes["y"] = -24;
-	altUnits["N"] = null;
-	altUnits["N"]["g"] = 1;
-	altUnits["N"]["m"] = 1;
-	altUnits["N"]["s"] = -2;
+	siPrefixes = ["k": 3, "M": 6, "G": 9, "T": 12, "P": 15, "E": 18, "Z": 21, "Y": 24, "m": -3, "u": -6, "n": -9, "p": -12, "f": -15, "a": -18, "z": -21, "y": -24];
+	altUnits["N"] = ["g": 1, "m": 1, "s": -2];
 	altCoeffs["N"] = 1000; // after all, a newton is a *kilo*gram meter per second squared
-	altUnits["J"]["g"] = 1;
-	altUnits["J"]["m"] = 2;
-	altUnits["J"]["s"] = -2;
+	altUnits["J"] = ["g": 1, "m": 2, "s": -2];
 	altCoeffs["J"] = 1000;
 	functs["sin"] = function United(United x) { return United(sin(x));};
 	functs["cos"] = function United(United x) { return United(cos(x));};
