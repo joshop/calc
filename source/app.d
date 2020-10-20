@@ -152,7 +152,7 @@ double[string][string] altUnits; // derived or nonSI units
 double[string] altCoeffs; // coefficients between the SI units and these
 // the units here aren't true SI units because the base unit of mass is the gram, not the kilogram
 double[string] repUnits(double[string] baseUnits) { // recursively replace base units with derived units
-	double[string][] possible;
+	double[string][] possible = null;
 	possible ~= baseUnits;
 	foreach (string altUnit, double[string] definition; altUnits) {
 		int maxRepable = int.max;
@@ -160,7 +160,8 @@ double[string] repUnits(double[string] baseUnits) { // recursively replace base 
 			if (!(baseUnit in baseUnits)) {
 				maxRepable = 0;
 			} else {
-				maxRepable = to!int(min(maxRepable, floor(baseUnits[baseUnit]/exponent)));
+				auto numTimes = to!int(floor(baseUnits[baseUnit]/exponent));
+				if (abs(maxRepable) > abs(numTimes)) maxRepable = numTimes;
 			}
 		}
 		if (maxRepable == int.max || maxRepable == 0) continue;
@@ -262,8 +263,22 @@ void main() {
 	siPrefixes = ["k": 3, "M": 6, "G": 9, "T": 12, "P": 15, "E": 18, "Z": 21, "Y": 24, "m": -3, "u": -6, "n": -9, "p": -12, "f": -15, "a": -18, "z": -21, "y": -24];
 	altUnits["N"] = ["g": 1, "m": 1, "s": -2];
 	altCoeffs["N"] = 1000; // after all, a newton is a *kilo*gram meter per second squared
+	altUnits["Pa"] = ["g": 1, "m": -1, "s": -2];
+	altCoeffs["Pa"] = 1000;
 	altUnits["J"] = ["g": 1, "m": 2, "s": -2];
 	altCoeffs["J"] = 1000;
+	altUnits["W"] = ["g": 1, "m": 2, "s": -3];
+	altCoeffs["W"] = 1000;
+	altUnits["C"] = ["s": 1, "A": 1];
+	altCoeffs["C"] = 1;
+	altUnits["V"] = ["g": 1, "m": 2, "s": -3, "A": -1];
+	altCoeffs["V"] = 1000;
+	altUnits["F"] = ["kg": -1, "m": -2, "s": 4, "A": 2];
+	altCoeffs["F"] = 0.001;
+	altUnits["ohm"] = ["g": 1, "m": 2, "s": -3, "A": -2];
+	altCoeffs["ohm"] = 1000;
+	altUnits["S"] = ["g": -1, "m": -2, "s": 3, "A": 2];
+	altCoeffs["S"] = 0.001;
 	functs["sin"] = function United(United x) { return United(sin(x));};
 	functs["cos"] = function United(United x) { return United(cos(x));};
 	functs["tan"] = function United(United x) { return United(tan(x));};
@@ -283,8 +298,7 @@ void main() {
 	constants["m"] = United(Complex!double(1), ["m": 1]);
 	constants["s"] = United(Complex!double(1), ["s": 1]);
 	constants["g"] = United(Complex!double(1), ["g": 1]);
-	constants["ohm"] = United(Complex!double(1), ["ohm": 1]);
-	constants["henry"] = United(Complex!double(1), ["henry": 1]);
+	constants["A"] = United(Complex!double(1), ["A": 1]);
 	constants["grav"] = United(Complex!double(-9.80655), ["m": 1, "s": -2]);
 	foreach(string unit, double[string] definition; altUnits) { // create constants out of every derived SI unit
 		constants[unit] = United(Complex!double(altCoeffs[unit]), definition);
