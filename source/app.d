@@ -1,10 +1,12 @@
 import std.stdio: writeln, readln, write, writefln;
 import std.array: assocArray;
 import std.algorithm.iteration: sum, fold, map;
-import std.algorithm.searching: startsWith, endsWith;
+import std.algorithm.searching: startsWith, endsWith, minElement;
+import std.algorithm.sorting: sort;
+import std.algorithm.comparison: min;
 import std.conv: to;
-import std.complex: Complex, sin, cos, tan, abs, sqrt, exp, log, log10;
-import std.math: asin, acos, atan, log2,  PI, E, approxEqual, quantize;
+import std.complex;
+import std.math;
 import std.format: format, formattedRead;
 import pegged.grammar;
 import arsd.terminal;
@@ -37,7 +39,7 @@ struct United { // i.e. with units...
 	}
 	string hrDimension(bool nameEmpty = false) { // human readable dimension information, nameEmpty = true means say "unit" for the empty unit
 		string num, denom;
-		foreach (string unit, double exponent; dimension) {
+		foreach (string unit, double exponent; repUnits(dimension)) {
 			if (exponent > 0) {
 				num ~= unit;
 				if (exponent != 1) {
@@ -62,13 +64,23 @@ struct United { // i.e. with units...
 			return num[0..$-1] ~ " / " ~ denom[0..$-1];
 		}
 	}
+	Complex!double dispDless() {
+		auto value = dless;
+		foreach(string unit, double exponent; repUnits(dimension)) {
+			if (unit in altCoeffs) {
+				value /= altCoeffs[unit];
+			}
+		}
+		return value;
+	}
 	string siPrefix() { // get the SI prefix, *or empty if it's dimensionless*
 		if (dimension.length == 0) return ""; // otherwise 100*10 = 1k not 1000
 		auto bestPrefix = "";
-		auto bestValue = dless;
-		auto bestExp = abs(log10(dless));
+		auto bestValue = dispDless();
+		auto bestExp = abs(log10(dispDless()));
+		auto trueDless = dispDless();
 		foreach(string pref, int exponent; siPrefixes) {
-			auto val = dless*United(Complex!double(10.0^^-exponent));
+			auto val = dispDless()*United(Complex!double(10.0^^-exponent));
 			if (abs(log10(val)) < bestExp) {
 				bestPrefix = pref;
 				bestValue = val;
@@ -79,9 +91,9 @@ struct United { // i.e. with units...
 	}
 	Complex!double siValue() { // the value for the prefix to be applied to
 		auto usingPrefix = siPrefix();
-		if (usingPrefix == "") return dless;
+		if (usingPrefix == "") return dispDless();
 		foreach(string pref, int exponent; siPrefixes) {
-			if (usingPrefix == pref) return dless*United(Complex!double(10.0^^-exponent));
+			if (usingPrefix == pref) return dispDless()*United(Complex!double(10.0^^-exponent));
 		}
 		assert(0, "something went really wrong with siPrefix()");
 	}
@@ -136,6 +148,35 @@ string dbInfo = ""; // debug error info string
 int[string] siPrefixes;
 int numDecimals = 5;
 bool noDimlessPrefs = true; // no dimensionless prefixes: 1000 -> 1000 not 1k, not implemented yet
+double[string][string] altUnits; // derived or nonSI units
+double[string] altCoeffs; // coefficients between the SI units and these
+// the units here aren't true SI units because the base unit of mass is the gram, not the kilogram
+double[string] repUnits(double[string] baseUnits) { // recursively replace base units with derived units
+	double[string][] possible;
+	possible ~= baseUnits;
+	foreach (string altUnit, double[string] definition; altUnits) {
+		int maxRepable = int.max;
+		foreach(string baseUnit, double exponent; definition) {
+			if (!(baseUnit in baseUnits)) {
+				maxRepable = 0;
+			} else {
+				maxRepable = to!int(min(maxRepable, floor(baseUnits[baseUnit]/exponent)));
+			}
+		}
+		if (maxRepable == int.max || maxRepable == 0) continue;
+		double[string] newBaseUnits = baseUnits.dup;
+		foreach(string baseUnit, double exponent; definition) {
+			newBaseUnits[baseUnit] -= maxRepable*exponent;
+			if (newBaseUnits[baseUnit] == 0) {
+				newBaseUnits.remove(baseUnit);
+			}
+		}
+		newBaseUnits[altUnit] = maxRepable;
+		possible ~= repUnits(newBaseUnits);
+	}
+	possible.sort!((x, y) => sum(map!(abs)(x.byValue())) < sum(map!(abs)(y.byValue())));
+	return possible.minElement!(a => a.length);
+}
 United evaluate(ParseTree expr) { // recursively parse the tree
 	switch(expr.name) {
 		case "Expression":
@@ -234,6 +275,11 @@ void main() {
 	siPrefixes["a"] = -18;
 	siPrefixes["z"] = -21;
 	siPrefixes["y"] = -24;
+	altUnits["N"] = null;
+	altUnits["N"]["g"] = 1;
+	altUnits["N"]["m"] = 1;
+	altUnits["N"]["s"] = -2;
+	altCoeffs["N"] = 1000; // after all, a newton is a *kilo*gram meter per second squared
 	functs["sin"] = function United(United x) { return United(sin(x));};
 	functs["cos"] = function United(United x) { return United(cos(x));};
 	functs["tan"] = function United(United x) { return United(tan(x));};
@@ -241,7 +287,7 @@ void main() {
 	functs["acos"] = function United(United x) { return United(Complex!double(acos(x.re), x.im));};
 	functs["atan"] = function United(United x) { return United(Complex!double(atan(x.re), x.im));};
 	functs["abs"] = function United(United x) { return United(Complex!double(abs(x)), x.dimension);};
-	functs["sqrt"] = function United(United x) { return usqrt(x);};
+	functs["sqrt"] = function United(United x) { return x.usqrt();};
 	functs["log"] = function United(United x) { return United(log(x));};
 	functs["log2"] = function United(United x) { return United(Complex!double(log2(x.re), x.im));};
 	functs["log10"] = function United(United x) { return United(log10(x));};
@@ -255,7 +301,7 @@ void main() {
 	constants["g"] = United(Complex!double(1), ["g": 1]);
 	constants["ohm"] = United(Complex!double(1), ["ohm": 1]);
 	constants["henry"] = United(Complex!double(1), ["henry": 1]);
-	constants["grav"] = United(Complex!double(-9.80655), ["m": 1, "s": -2])
+	constants["grav"] = United(Complex!double(-9.80655), ["m": 1, "s": -2]);
 	auto terminal = Terminal(ConsoleOutputType.linear);
 	while (true) {
 		try {
