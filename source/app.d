@@ -87,7 +87,7 @@ struct United { // i.e. with units...
 		auto trueDless = dispDless();
 		foreach(string pref, int exponent; siPrefixes) {
 			auto val = dispDless()*United(Complex!double(10.0^^-exponent));
-			if (log10(val).re < bestExp && log10(val).re >= 0) {
+			if (log10(val).re <= bestExp && log10(val).re >= 0 || log10(bestValue).re < 0) {
 				bestPrefix = pref;
 				bestValue = val;
 				bestExp = abs(log10(val));
