@@ -283,7 +283,7 @@ United evaluate(ParseTree expr) { // recursively parse the tree
 	}
 }
 void main() {
-	siPrefixes = ["k": 3, "M": 6, "G": 9, "T": 12, "P": 15, "E": 18, "Z": 21, "Y": 24, "m": -3, "u": -6, "n": -9, "p": -12, "f": -15, "a": -18, "z": -21, "y": -24];
+	siPrefixes = ["k": 3, "M": 6, "G": 9, "T": 12, "P": 15, "E": 18, "Z": 21, "Y": 24, "c": -2, "m": -3, "u": -6, "n": -9, "p": -12, "f": -15, "a": -18, "z": -21, "y": -24];
 	altUnits["N"] = ["g": 1, "m": 1, "s": -2];
 	altCoeffs["N"] = 1000; // after all, a newton is a *kilo*gram meter per second squared
 	altUnits["Pa"] = ["g": 1, "m": -1, "s": -2];
