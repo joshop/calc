@@ -250,7 +250,7 @@ United evaluate(ParseTree expr) { // recursively parse the tree
 				foreach (string pref, int exponent; siPrefixes) { // scan si prefixes for matches
 					foreach (string name, United value; constants) {
 						if (pref ~ name == expr.matches[0]) {
-							return value * United(Complex!double(10.0^^exponent));
+							return value * United(Complex!double(10.0^^exponent), value.prefs);
 						}
 					}
 				}
