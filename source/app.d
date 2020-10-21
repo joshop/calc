@@ -187,7 +187,7 @@ double[string] repUnits(double[string] baseUnits, string[] allowed) { // recursi
 	return possible.minElement!(a => a.length);
 }
 string[] genPrefs(string[string] changes) {
-	string[] newPrefs = ["N", "P", "J", "W", "C", "V", "F", "ohm", "S"];
+	string[] newPrefs = ["Pa", "N", "P", "J", "W", "C", "V", "F", "ohm", "S"];
 	foreach (string original, string changeTo; changes) {
 		newPrefs = map!(x => x == original ? changeTo : x)(newPrefs).array;
 	}
@@ -326,15 +326,41 @@ void main() {
 	foreach(string unit, double[string] definition; altUnits) { // create constants out of every derived SI unit
 		constants[unit] = United(Complex!double(altCoeffs[unit]), definition);
 	}
-	// a NON-SI unit!
+	// it's a NON-SI unit!
 	altUnits["lb"] = altUnits["N"].dup;
 	altCoeffs["lb"] = 4448.22;
 	constants["lb"] = United(Complex!double(altCoeffs["lb"]), altUnits["lb"], genPrefs(["N": "lb"]));
-	// another one!
+	// and this... is a NON-SI unit!
 	altUnits["in"] = ["m": 1];
 	altCoeffs["in"] = 0.0254;
 	constants["in"] = United(Complex!double(altCoeffs["in"]), altUnits["in"], genPrefs(null) ~ ["in"]);
+	// this, however, is a NON-SI unit!
+	altUnits["min"] = ["s": 1];
+	altCoeffs["min"] = 60;
+	constants["min"] = United(Complex!double(altCoeffs["min"]), altUnits["min"], genPrefs(null) ~ ["min"]);
+	// surprisingly, it's a NON-SI unit!
+	altUnits["hr"] = ["s": 1];
+	altCoeffs["hr"] = 3600;
+	constants["hr"] = United(Complex!double(altCoeffs["hr"]), altUnits["hr"], genPrefs(null) ~ ["hr"]);
+	// NON-SI unit!
+	altUnits["ft"] = ["m": 1];
+	altCoeffs["ft"] = 12 * altCoeffs["in"];
+	constants["ft"] = United(Complex!double(altCoeffs["ft"]), altUnits["ft"], genPrefs(null) ~ ["ft"]);
+	// is it really a NON-SI unit!
+	altUnits["mi"] = ["m": 1];
+	altCoeffs["mi"] = 5280 * altCoeffs["ft"];
+	constants["mi"] = United(Complex!double(altCoeffs["mi"]), altUnits["mi"], genPrefs(null) ~ ["mi"]);
+	// behold! a NON-SI unit!
+	altUnits["ftlb"] = altUnits["J"].dup;
+	altCoeffs["ftlb"] = 737.562;
+	constants["ftlb"] = United(Complex!double(altCoeffs["ftlb"]), altUnits["ftlb"], genPrefs(["J": "ftlb"]));
+	// what's this called?
+	altUnits["psi"] = altUnits["Pa"].dup;
+	altCoeffs["psi"] = 6894760;
+	constants["psi"] = United(Complex!double(altCoeffs["psi"]), altUnits["psi"], genPrefs(["Pa": "psi"]));
+	
 	auto terminal = Terminal(ConsoleOutputType.linear);
+	
 	while (true) {
 		try {
 			terminal.write("> ");
