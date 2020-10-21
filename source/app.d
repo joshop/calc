@@ -1,9 +1,10 @@
 import std.stdio: writeln, readln, write, writefln;
-import std.array: assocArray;
+import std.array: array;
 import std.algorithm.iteration: sum, fold, map;
-import std.algorithm.searching: startsWith, endsWith, minElement;
+import std.algorithm.searching: startsWith, endsWith, minElement, canFind;
 import std.algorithm.sorting: sort;
 import std.algorithm.comparison: min;
+import std.algorithm.mutation: reverse;
 import std.conv: to;
 import std.complex;
 import std.math;
@@ -20,26 +21,31 @@ ExpRep < ('*' / '/') Exp
 Exp < Neg NegRep*
 NegRep < '^' Neg
 Neg < '-'? Atom
-Atom < Function Atom* / Variable / Atom Atom+ / Literal / '(' Add ')'
+Atom < Function Atom* / Conversion / Variable / Atom Atom+ / Literal / '(' Add ')'
 Function < ~(identifier) '(' Add ')'
 Literal <- ~([0-9]+ ('.' [0-9]+)*)
 Variable <- ~(identifier)
+Conversion < Atom 'to' Atom
 `));
+
 struct United { // i.e. with units...
 	Complex!double dless; // the dimensionless part
 	alias dless this; // hopefully won't get used much?
 	double[string] dimension; // the dimension: key is the si unit symbol, value is the exponent of it (undefined is zero)
-	this(Complex!double initDless, double[string] initDimension) {
+	string[] prefs; // preferred units that represent the same quantity, default: SI units
+	this(Complex!double initDless, double[string] initDimension, string[] initPrefs = genPrefs(null)) {
 		dless = initDless;
 		dimension = initDimension;
+		prefs = initPrefs;
 	}
-	this(Complex!double initDless) {
+	this(Complex!double initDless, string[] initPrefs = genPrefs(null)) {
 		dless = initDless;
 		dimension = null;
+		prefs = initPrefs;
 	}
 	string hrDimension(bool nameEmpty = false) { // human readable dimension information, nameEmpty = true means say "unit" for the empty unit
 		string num, denom;
-		foreach (string unit, double exponent; repUnits(dimension)) {
+		foreach (string unit, double exponent; repUnits(dimension, prefs)) {
 			if (exponent > 0) {
 				num ~= unit;
 				if (exponent != 1) {
@@ -66,9 +72,9 @@ struct United { // i.e. with units...
 	}
 	Complex!double dispDless() {
 		auto value = dless;
-		foreach(string unit, double exponent; repUnits(dimension)) {
+		foreach(string unit, double exponent; repUnits(dimension, prefs)) {
 			if (unit in altCoeffs) {
-				value /= altCoeffs[unit];
+				value /= altCoeffs[unit]^^exponent;
 			}
 		}
 		return value;
@@ -102,7 +108,7 @@ struct United { // i.e. with units...
 			dbInfo = format!("Tried to %s units %s and %s")(op, dimension, other.dimension);
 			throw new Exception("Operation " ~ op ~ " can't operate on units " ~ hrDimension(true) ~ " and " ~ other.hrDimension(true) ~ ".");
 		}
-		return United(mixin("dless" ~ op ~ "other.dless"), dimension);
+		return United(mixin("dless" ~ op ~ "other.dless"), dimension, prefs);
 	}
 	United opBinary(string op)(United other) if (op == "*" || op == "/") { // case 2: units multiply or divide here
 		double[string] finalDim = dimension.dup;
@@ -116,7 +122,7 @@ struct United { // i.e. with units...
 				finalDim[unit] = op == "*" ? exponent : -exponent;
 			}
 		}
-		return United(mixin("dless" ~ op ~ "other.dless"), finalDim);
+		return United(mixin("dless" ~ op ~ "other.dless"), finalDim, other.prefs);
 	}
 	United opBinary(string op)(United other) if (op == "^^") { // case 3: error if exponent is not dimensionless
 		if (other.dimension.length) { // is not dimensionless
@@ -131,10 +137,10 @@ struct United { // i.e. with units...
 			}
 			finalDim[unit] *= other.dless.re;
 		}
-		return United(dless ^^ other.dless, finalDim);
+		return United(dless ^^ other.dless, finalDim, prefs);
 	}
 	United opUnary(string op)() if (op == "-") {
-		return United(-dless, dimension);
+		return United(-dless, dimension, prefs);
 	}
 	United usqrt() {
 		return this ^^ United(Complex!double(0.5));
@@ -151,10 +157,11 @@ bool noDimlessPrefs = true; // no dimensionless prefixes: 1000 -> 1000 not 1k, n
 double[string][string] altUnits; // derived or nonSI units
 double[string] altCoeffs; // coefficients between the SI units and these
 // the units here aren't true SI units because the base unit of mass is the gram, not the kilogram
-double[string] repUnits(double[string] baseUnits) { // recursively replace base units with derived units
+double[string] repUnits(double[string] baseUnits, string[] allowed) { // recursively replace base units with derived units
 	double[string][] possible = null;
 	possible ~= baseUnits;
 	foreach (string altUnit, double[string] definition; altUnits) {
+		if (!(allowed.canFind(altUnit))) continue; // if not preferred, skip
 		int maxRepable = int.max;
 		foreach(string baseUnit, double exponent; definition) {
 			if (!(baseUnit in baseUnits)) {
@@ -173,10 +180,18 @@ double[string] repUnits(double[string] baseUnits) { // recursively replace base 
 			}
 		}
 		newBaseUnits[altUnit] = maxRepable;
-		possible ~= repUnits(newBaseUnits);
+		possible ~= repUnits(newBaseUnits, allowed);
 	}
+	reverse(possible);
 	possible.sort!((x, y) => sum(map!(abs)(x.byValue())) < sum(map!(abs)(y.byValue())));
 	return possible.minElement!(a => a.length);
+}
+string[] genPrefs(string[string] changes) {
+	string[] newPrefs = ["N", "P", "J", "W", "C", "V", "F", "ohm", "S"];
+	foreach (string original, string changeTo; changes) {
+		newPrefs = map!(x => x == original ? changeTo : x)(newPrefs).array;
+	}
+	return newPrefs;
 }
 United evaluate(ParseTree expr) { // recursively parse the tree
 	switch(expr.name) {
@@ -255,6 +270,14 @@ United evaluate(ParseTree expr) { // recursively parse the tree
 				dbInfo = format!("Functions defined: %s")(functs);
 				throw new Exception("Function " ~ expr.matches[0] ~ " not found.");
 			}
+		case "Expression.Conversion":
+			auto first = evaluate(expr.children[0]);
+			auto second = evaluate(expr.children[1]);
+			if (first.dimension != second.dimension) {
+				dbInfo = format!("Converting %s to %s")(first.dimension, second.dimension);
+				throw new Exception("Unable to convert value in units " ~ first.hrDimension(true) ~ " to " ~ second.hrDimension(true) ~ ".");
+			}
+			return United(first.dless, first.dimension, second.prefs);
 		default:
 			assert(0, "problems have arisen");
 	}
@@ -303,6 +326,14 @@ void main() {
 	foreach(string unit, double[string] definition; altUnits) { // create constants out of every derived SI unit
 		constants[unit] = United(Complex!double(altCoeffs[unit]), definition);
 	}
+	// a NON-SI unit!
+	altUnits["lb"] = altUnits["N"].dup;
+	altCoeffs["lb"] = 4448.22;
+	constants["lb"] = United(Complex!double(altCoeffs["lb"]), altUnits["lb"], genPrefs(["N": "lb"]));
+	// another one!
+	altUnits["in"] = ["m": 1];
+	altCoeffs["in"] = 0.0254;
+	constants["in"] = United(Complex!double(altCoeffs["in"]), altUnits["in"], genPrefs(null) ~ ["in"]);
 	auto terminal = Terminal(ConsoleOutputType.linear);
 	while (true) {
 		try {
