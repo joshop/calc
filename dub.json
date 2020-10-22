@@ -5,7 +5,8 @@
 	"copyright": "no",
 	"dependencies": {
 		"arsd-official:terminal": "~>8.5.1",
-		"pegged": "~>0.4.4"
+		"pegged": "~>0.4.4",
+		"sbin": "~>0.5.0"
 	},
 	"description": "A basic calculator",
 	"license": "no",
