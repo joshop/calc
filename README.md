@@ -1,5 +1,5 @@
 # calc
-This is an infix calculator programmed in D. It uses [pegged](https://github.com/PhilippeSigaud/Pegged/) for expression parsing and the [arsd](https://github.com/adamdruppe/arsd) terminal module for input.
+This is an infix calculator programmed in D. It uses [pegged](https://github.com/PhilippeSigaud/Pegged/) for expression parsing, the [arsd](https://github.com/adamdruppe/arsd) terminal module for input and the [sbin](https://github.com/deviator/sbin) module for binary serialization.
 Currently support for:
 * double-precision values
 * complex numbers
