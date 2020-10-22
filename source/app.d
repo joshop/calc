@@ -1,4 +1,4 @@
-import std.stdio: writeln, readln, write, writefln;
+import std.stdio: writeln, readln, write, writefln, File;
 import std.array: array;
 import std.algorithm.iteration: sum, fold, map;
 import std.algorithm.searching: startsWith, endsWith, minElement, canFind;
@@ -11,6 +11,7 @@ import std.math;
 import std.format: format, formattedRead;
 import pegged.grammar;
 import arsd.terminal;
+import sbin;
 mixin(grammar(`
 Expression:
 Start < (Variable '=')? Add
@@ -282,26 +283,14 @@ United evaluate(ParseTree expr) { // recursively parse the tree
 			assert(0, "problems have arisen");
 	}
 }
+struct Env { // used for loading calc.dat
+        United[string] c;
+        int[string] sp;
+        double[string][string] au;
+        double[string] ac;
+}
+
 void main() {
-	siPrefixes = ["k": 3, "M": 6, "G": 9, "T": 12, "P": 15, "E": 18, "Z": 21, "Y": 24, "c": -2, "m": -3, "u": -6, "n": -9, "p": -12, "f": -15, "a": -18, "z": -21, "y": -24];
-	altUnits["N"] = ["g": 1, "m": 1, "s": -2];
-	altCoeffs["N"] = 1000; // after all, a newton is a *kilo*gram meter per second squared
-	altUnits["Pa"] = ["g": 1, "m": -1, "s": -2];
-	altCoeffs["Pa"] = 1000;
-	altUnits["J"] = ["g": 1, "m": 2, "s": -2];
-	altCoeffs["J"] = 1000;
-	altUnits["W"] = ["g": 1, "m": 2, "s": -3];
-	altCoeffs["W"] = 1000;
-	altUnits["C"] = ["s": 1, "A": 1];
-	altCoeffs["C"] = 1;
-	altUnits["V"] = ["g": 1, "m": 2, "s": -3, "A": -1];
-	altCoeffs["V"] = 1000;
-	altUnits["F"] = ["kg": -1, "m": -2, "s": 4, "A": 2];
-	altCoeffs["F"] = 0.001;
-	altUnits["ohm"] = ["g": 1, "m": 2, "s": -3, "A": -2];
-	altCoeffs["ohm"] = 1000;
-	altUnits["S"] = ["g": -1, "m": -2, "s": 3, "A": 2];
-	altCoeffs["S"] = 0.001;
 	functs["sin"] = function United(United x) { return United(sin(x));};
 	functs["cos"] = function United(United x) { return United(cos(x));};
 	functs["tan"] = function United(United x) { return United(tan(x));};
@@ -315,50 +304,13 @@ void main() {
 	functs["log10"] = function United(United x) { return United(log10(x));};
 	functs["_debug"] = function United(United x) { dbEnabled = x != 0; return x; }; // enable/disable debug function
 	functs["exp"] = function United(United x) { return United(exp(x));};
-	constants["pi"] = United(Complex!double(PI));
-	constants["i"] = United(sqrt(Complex!double(-1))); // maybe add support for j?
-	constants["e"] = United(Complex!double(E));
-	constants["m"] = United(Complex!double(1), ["m": 1]);
-	constants["s"] = United(Complex!double(1), ["s": 1]);
-	constants["g"] = United(Complex!double(1), ["g": 1]);
-	constants["A"] = United(Complex!double(1), ["A": 1]);
-	constants["grav"] = United(Complex!double(-9.80655), ["m": 1, "s": -2]);
-	foreach(string unit, double[string] definition; altUnits) { // create constants out of every derived SI unit
-		constants[unit] = United(Complex!double(altCoeffs[unit]), definition);
-	}
-	// it's a NON-SI unit!
-	altUnits["lb"] = altUnits["N"].dup;
-	altCoeffs["lb"] = 4448.22;
-	constants["lb"] = United(Complex!double(altCoeffs["lb"]), altUnits["lb"], genPrefs(["N": "lb"]));
-	// and this... is a NON-SI unit!
-	altUnits["in"] = ["m": 1];
-	altCoeffs["in"] = 0.0254;
-	constants["in"] = United(Complex!double(altCoeffs["in"]), altUnits["in"], genPrefs(null) ~ ["in"]);
-	// this, however, is a NON-SI unit!
-	altUnits["min"] = ["s": 1];
-	altCoeffs["min"] = 60;
-	constants["min"] = United(Complex!double(altCoeffs["min"]), altUnits["min"], genPrefs(null) ~ ["min"]);
-	// surprisingly, it's a NON-SI unit!
-	altUnits["hr"] = ["s": 1];
-	altCoeffs["hr"] = 3600;
-	constants["hr"] = United(Complex!double(altCoeffs["hr"]), altUnits["hr"], genPrefs(null) ~ ["hr"]);
-	// NON-SI unit!
-	altUnits["ft"] = ["m": 1];
-	altCoeffs["ft"] = 12 * altCoeffs["in"];
-	constants["ft"] = United(Complex!double(altCoeffs["ft"]), altUnits["ft"], genPrefs(null) ~ ["ft"]);
-	// is it really a NON-SI unit!
-	altUnits["mi"] = ["m": 1];
-	altCoeffs["mi"] = 5280 * altCoeffs["ft"];
-	constants["mi"] = United(Complex!double(altCoeffs["mi"]), altUnits["mi"], genPrefs(null) ~ ["mi"]);
-	// behold! a NON-SI unit!
-	altUnits["ftlb"] = altUnits["J"].dup;
-	altCoeffs["ftlb"] = 737.562;
-	constants["ftlb"] = United(Complex!double(altCoeffs["ftlb"]), altUnits["ftlb"], genPrefs(["J": "ftlb"]));
-	// what's this called?
-	altUnits["psi"] = altUnits["Pa"].dup;
-	altCoeffs["psi"] = 6894760;
-	constants["psi"] = United(Complex!double(altCoeffs["psi"]), altUnits["psi"], genPrefs(["Pa": "psi"]));
-	
+	auto calcDat = File("calc.dat");
+	auto contents = calcDat.rawRead(new ubyte[calcDat.size()]);
+	auto readData = contents.sbinDeserialize!Env;
+	constants = readData.c;
+	siPrefixes = readData.sp;
+	altUnits = readData.au;
+	altCoeffs = readData.ac;
 	auto terminal = Terminal(ConsoleOutputType.linear);
 	
 	while (true) {
